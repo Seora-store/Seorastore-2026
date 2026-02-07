@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seora Dashboard</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body { font-family: 'Cairo', sans-serif; }
+.tab-content { display:none }
+.tab-content.active { display:block }
+.modal { display:none }
+.modal.active { display:flex }
+</style>
+</head>
+
+<body class="bg-gray-100">
+
+<!-- LOGIN -->
+<div id="loginPage" class="min-h-screen flex items-center justify-center">
+  <form onsubmit="login(event)" class="bg-white p-8 rounded shadow w-full max-w-sm space-y-4">
+    <h2 class="text-2xl font-bold text-center">تسجيل الدخول</h2>
+    <input id="loginUser" placeholder="اسم المستخدم" class="border p-2 w-full" required>
+    <input id="loginPass" type="password" placeholder="كلمة المرور" class="border p-2 w-full" required>
+    <button class="bg-pink-500 text-white w-full py-2 rounded">دخول</button>
+    <p id="loginError" class="text-red-500 text-center hidden">بيانات غير صحيحة</p>
+  </form>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="hidden">
+
+<header class="bg-pink-600 text-white p-4 flex justify-between">
+  <div>
+    <strong>Seora Dashboard</strong>
+    <span id="userInfo" class="ml-2 text-sm"></span>
+  </div>
+  <button onclick="logout()" class="bg-white/20 px-3 py-1 rounded">Logout</button>
+</header>
+
+<main class="p-6">
+
+<!-- Tabs -->
+<div class="bg-white rounded shadow mb-6">
+  <div class="flex border-b">
+    <button onclick="switchTab('overview')" class="px-4 py-3">📊 نظرة عامة</button>
+    <button onclick="switchTab('products')" class="px-4 py-3">📦 المنتجات</button>
+    <button onclick="switchTab('orders')" class="px-4 py-3">🛒 الطلبات</button>
+    <button id="usersTabBtn" onclick="switchTab('users')" class="px-4 py-3 hidden">👥 المستخدمين</button>
+  </div>
+</div>
+
+<!-- Overview -->
+<div id="overview-tab" class="tab-content active bg-white p-6 rounded shadow">
+  مرحباً بك في لوحة تحكم سيورا
+</div>
+
+<!-- Products -->
+<div id="products-tab" class="tab-content bg-white p-6 rounded shadow">
+  إدارة المنتجات (جاهزة للربط)
+</div>
+
+<!-- Orders -->
+<div id="orders-tab" class="tab-content bg-white p-6 rounded shadow">
+  إدارة الطلبات (جاهزة للربط)
+</div>
+
+<!-- Users -->
+<div id="users-tab" class="tab-content bg-white p-6 rounded shadow">
+  <div class="flex justify-between mb-4">
+    <h2 class="text-xl font-bold">المستخدمين</h2>
+    <button onclick="openUserModal()" class="bg-pink-500 text-white px-4 py-2 rounded">➕ إضافة مستخدم</button>
+  </div>
+
+  <table class="w-full">
+    <thead>
+      <tr class="border-b">
+        <th>Username</th>
+        <th>Role</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="usersBody"></tbody>
+  </table>
+</div>
+
+</main>
+</div>
+
+<!-- USER MODAL -->
+<div id="userModal" class="modal fixed inset-0 bg-black/50 items-center justify-center">
+  <form onsubmit="saveUser(event)" class="bg-white p-6 rounded w-full max-w-sm space-y-4">
+    <input id="newUsername" placeholder="Username" class="border p-2 w-full" required>
+    <input id="newPassword" placeholder="Password" class="border p-2 w-full" required>
+    <select id="newRole" class="border p-2 w-full">
+      <option value="admin">Admin</option>
+      <option value="staff">Staff</option>
+    </select>
+    <div class="flex gap-2">
+      <button class="bg-pink-500 text-white flex-1 py-2 rounded">حفظ</button>
+      <button type="button" onclick="closeUserModal()" class="bg-gray-300 flex-1 py-2 rounded">إلغاء</button>
+    </div>
+  </form>
+</div>
+
+<script>
+/* ===== DATA ===== */
+let users = JSON.parse(localStorage.getItem('seoraUsers')) || [
+  {username:'admin', password:'1234', role:'admin'},
+  {username:'staff', password:'1234', role:'staff'}
+];
+
+let currentUser = JSON.parse(localStorage.getItem('seoraCurrentUser'));
+
+/* ===== AUTH ===== */
+function login(e){
+  e.preventDefault();
+  const u = loginUser.value;
+  const p = loginPass.value;
+  const user = users.find(x=>x.username===u && x.password===p);
+  if(!user){
+    loginError.classList.remove('hidden');
+    return;
+  }
+  localStorage.setItem('seoraCurrentUser', JSON.stringify(user));
+  location.reload();
+}
+
+function logout(){
+  localStorage.removeItem('seoraCurrentUser');
+  location.reload();
+}
+
+/* ===== INIT ===== */
+if(currentUser){
+  loginPage.classList.add('hidden');
+  dashboard.classList.remove('hidden');
+  userInfo.textContent = `(${currentUser.username} - ${currentUser.role})`;
+  if(currentUser.role === 'admin'){
+    usersTabBtn.classList.remove('hidden');
+    renderUsers();
+  }
+}else{
+  dashboard.classList.add('hidden');
+}
+
+/* ===== TABS ===== */
+function switchTab(tab){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById(tab+'-tab').classList.add('active');
+}
+
+/* ===== USERS ===== */
+function renderUsers(){
+  usersBody.innerHTML = users.map((u,i)=>`
+    <tr>
+      <td>${u.username}</td>
+      <td>${u.role}</td>
+      <td><button onclick="deleteUser(${i})" class="text-red-500">🗑️</button></td>
+    </tr>
+  `).join('');
+}
+
+function openUserModal(){
+  userModal.classList.add('active');
+}
+function closeUserModal(){
+  userModal.classList.remove('active');
+}
+
+function saveUser(e){
+  e.preventDefault();
+  users.push({
+    username:newUsername.value,
+    password:newPassword.value,
+    role:newRole.value
+  });
+  localStorage.setItem('seoraUsers', JSON.stringify(users));
+  closeUserModal();
+  renderUsers();
+  e.target.reset();
+}
+
+function deleteUser(i){
+  if(confirm('حذف المستخدم؟')){
+    users.splice(i,1);
+    localStorage.setItem('seoraUsers', JSON.stringify(users));
+    renderUsers();
+  }
+}
+</script>
+
+</body>
+</html>
